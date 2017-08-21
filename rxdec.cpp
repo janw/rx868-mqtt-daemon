@@ -3,6 +3,7 @@
  *
  * Main program.
  */
+#include <libconfig.h++>
 #include <wiringPi.h>
 #include <stdio.h>
 #include <signal.h>
@@ -31,6 +32,7 @@ const char* LWT_PAYLOAD = "Last will and testament.";
 const int  QOS = 1;
 
 const auto TIMEOUT = std::chrono::seconds(10);
+Config cfg;
 
 mqtt::async_client client(SERVER_ADDRESS, CLIENT_ID);
 mqtt::token_ptr conntok = NULL;
@@ -106,7 +108,7 @@ void create_and_send(int address, string type, float value)
 	cout << "  ...OK" << endl;
 }
 
-void publish_data(DecoderOutput val)
+void publishData(DecoderOutput val)
 {	
 	printf("publishing temperature: %.1f\n", val.temperature);
 	create_and_send(val.address, "temperature", val.temperature);
@@ -194,10 +196,27 @@ PI_THREAD (decoderThread) {
   }
 }
 
-void loadConfig()
+////////////////////////////////////////////////////////////////////////////
+
+int loadConfig()
 {
-	
+	// Read the file. If there is an error, report it and exit.
+	try	{
+		cfg.readFile("config.cfg");
+	}
+	catch(const FileIOException &fioex)	{
+		std::cerr << "I/O error while reading file." << std::endl;
+		return(EXIT_FAILURE);
+	}
+	catch(const ParseException &pex) {
+		std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine()
+				  << " - " << pex.getError() << std::endl;
+		return(EXIT_FAILURE);
+	}
+	return 0;
 }
+
+////////////////////////////////////////////////////////////////////////////
 
 /*
  * MAIN
@@ -205,7 +224,11 @@ void loadConfig()
  * Initialize the hardware and print the output of the Decoder.
  */
 int main() {
-	loadConfig();
+	
+	if (loadConfig() > 0) {
+		cerr << "Failed to read config. Exiting." << endl;
+		exit(1);
+	}
 
 	wiringPiSetup();
 	/*
@@ -217,8 +240,7 @@ int main() {
 	pinMode(2, INPUT);
 	pullUpDnControl(2, PUD_DOWN);
 
-	int result = setup_mqtt();
-	if (result > 0) {
+	if (setup_mqtt() > 0) {
 		cerr << "Failed to connect to server. Exiting." << endl;
 		exit(1);
 	}
