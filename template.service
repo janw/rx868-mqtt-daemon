@@ -4,12 +4,12 @@ Documentation=https://github.com/janwh/rx868-mqtt-daemon
 After=mosquitto.service
 
 [Service]
-Type=notify
-User=daemon
-Group=daemon
+Type=simple
+User=pi
+Group=pi
 WorkingDirectory=/opt/rx868-mqtt-daemon/
 ExecStart=/opt/rx868-mqtt-daemon/rxdec
-StandardOutput=null
+StandardOutput=journal
 StandardError=journal
 
 [Install]
