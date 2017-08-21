@@ -16,9 +16,45 @@ The communication protocol is compatible to ELV sensors like the S 300 and ASH 2
 
 ## Compiling
 
-T.B.D.
+This quide is for installing on a Raspberry Pi 3 running Raspbian Strech. First install the necessary packages:
 
-Requires presence of self-compiled PAHO MQTT library, and libconfig.
+```
+sudo apt-get install build-essential gcc make cmake cmake-gui cmake-curses-gui automake libconfig++8-dev libssl-dev
+```
+
+Next install the Eclipse Paho MQTT libraries. The CPP lib depends on the C lib to be properly installed, so we beginn with that
+
+```
+# Install MQTT C-lib
+cd ~
+git clone https://github.com/eclipse/paho.mqtt.c.git
+cd paho.mqtt.c
+make
+sudo make install
+
+# Install MQTT C++-lib
+cd ~
+git clone https://github.com/eclipse/paho.mqtt.cpp.git
+cd paho.mqtt.cpp
+./bootstrap
+./configure
+make
+sudo make install
+```
+
+Now just clone this repo (best into `/opt`), and run `make` inside it.
+
+```
+git clone https://github.com/janwh/rx868-mqtt-daemo/rx868-mqtt-daemonn.git
+cd rx868-mqtt-daemon 
+make
+```
+
+Run the daemon by its name:
+
+```
+./rxdec
+```
 
 
 # Daemonizing / Running as a systemd service
