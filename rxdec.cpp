@@ -19,22 +19,16 @@
 #include "mqtt/async_client.h"
 
 using namespace std;
+using namespace libconfig;
 
-const string SERVER_ADDRESS	{ "tcp://10.10.9.7:1883" };
-const string CLIENT_ID		{ "async_publish" };
+// Default configuration
+string SERVER_ADDRESS = "tcp://127.0.0.1:1883";
+string CLIENT_ID = "rx868relay";
+string TOPIC = "weatherstation";
+int  QOS = 1;
+auto TIMEOUT = chrono::seconds(10);
 
-const string TOPIC { "hello" };
-
-const char* PAYLOAD1 = "Starting up relay";
-
-const char* LWT_PAYLOAD = "Last will and testament.";
-
-const int  QOS = 1;
-
-const auto TIMEOUT = std::chrono::seconds(10);
-Config cfg;
-
-mqtt::async_client client(SERVER_ADDRESS, CLIENT_ID);
+Config config;
 mqtt::token_ptr conntok = NULL;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -60,32 +54,30 @@ public:
 
 /////////////////////////////////////////////////////////////////////////////
 
-int setup_mqtt()
+int setup_mqtt(mqtt::async_client &client)
 {
-
-
-	// callback cb;
-	// client.set_callback(cb);
+	string username;
+	string password;
 
 	mqtt::connect_options conopts;
-	mqtt::message willmsg(TOPIC, LWT_PAYLOAD, 1, true);
-	mqtt::will_options will(willmsg);
-	conopts.set_will(will);
 
-	cout << "Initialized for server '" << SERVER_ADDRESS << "'" << endl;
+	cout << "Initialized for server '" <<  client.get_server_uri() << "'" << endl;
+
+	if(config.lookupValue("username", username)
+	   && config.lookupValue("password", password)) {
+
+		conopts.set_user_name(username);
+		conopts.set_password(password);
+		cout << "Using username/password authentication" << endl;
+
+	}
+
 
 	try {
 		cout << "Connecting ... ";
 		conntok = client.connect(conopts);
 		conntok->wait();
 		cout << "OK" << endl;
-
-		// First use a message pointer.
-		cout << "Sending startup message" << endl;
-		mqtt::message_ptr pubmsg = mqtt::make_message(TOPIC, PAYLOAD1);
-		pubmsg->set_qos(QOS);
-		client.publish(pubmsg)->wait_for(TIMEOUT);
-
 	}
 	catch (const mqtt::exception& exc) {
 		cerr << exc.what() << endl;
@@ -95,7 +87,7 @@ int setup_mqtt()
 	return 0;
 }
 
-void create_and_send(int address, string type, float value)
+void create_and_send(mqtt::async_client &client, int address, string type, float value)
 {
 	string val_str = to_string(value);
 	string add_str = to_string(address);
@@ -108,34 +100,34 @@ void create_and_send(int address, string type, float value)
 	cout << "  ...OK" << endl;
 }
 
-void publishData(DecoderOutput val)
+void publishData(mqtt::async_client &client, DecoderOutput val)
 {	
 	printf("publishing temperature: %.1f\n", val.temperature);
-	create_and_send(val.address, "temperature", val.temperature);
+	create_and_send(client, val.address, "temperature", val.temperature);
 
 	if (7 == val.sensorType) {
 		// Kombisensor
 		printf("publishing humidity: %.0f\n", val.humidity);
-		create_and_send(val.address, "humidity", val.humidity);
+		create_and_send(client, val.address, "humidity", val.humidity);
 
 		printf("publishing wind: %.1f\n", val.wind);
-		create_and_send(val.address, "wind", val.wind);
+		create_and_send(client, val.address, "wind", val.wind);
 
 		printf("publishing rain sum: %d\n", val.rainSum);
-		create_and_send(val.address, "rain_sum", val.rainSum);
+		create_and_send(client, val.address, "rain_sum", val.rainSum);
 
 		printf("publishing rain detector: %d\n", val.rainDetect);
-		create_and_send(val.address, "rain_detect", val.rainDetect);
+		create_and_send(client, val.address, "rain_detect", val.rainDetect);
 	}
 	if (1 == val.sensorType || 4 == val.sensorType) {
 		// Thermo/Hygro
 		printf("publishing humidity: %.0f\n", val.humidity);
-		create_and_send(val.address, "humidity", val.humidity);
+		create_and_send(client, val.address, "humidity", val.humidity);
 	}
 	if (4 == val.sensorType) {
 		// Thermo/Hygro/Baro
 		printf("publishing pressure: %d\n", val.pressure);
-		create_and_send(val.address, "pressure", val.pressure);
+		create_and_send(client, val.address, "pressure", val.pressure);
 	}
 }
 
@@ -150,12 +142,6 @@ static volatile int hasOut = 0;
  */
 void sigIntHandler(int dummy) {
 	keepRunning = 0;
-
-	// Disconnect from server
-	cout << "\nDisconnecting from MQTT broker ... ";
-	conntok = client.disconnect();
-	conntok->wait();
-	cout << "OK" << endl;
 } 
 
 /*
@@ -202,7 +188,7 @@ int loadConfig()
 {
 	// Read the file. If there is an error, report it and exit.
 	try	{
-		cfg.readFile("config.cfg");
+		config.readFile("config.cfg");
 	}
 	catch(const FileIOException &fioex)	{
 		std::cerr << "I/O error while reading file." << std::endl;
@@ -240,11 +226,28 @@ int main() {
 	pinMode(2, INPUT);
 	pullUpDnControl(2, PUD_DOWN);
 
-	if (setup_mqtt() > 0) {
-		cerr << "Failed to connect to server. Exiting." << endl;
+	string address;
+	string clientID;
+
+	if(config.lookupValue("server_address", address)
+	   && config.lookupValue("client_id", clientID)) {
+
+	}
+	else {
+		cerr << "Please set server address and client ID in config. Exiting." << endl;
 		exit(1);
 	}
 
+	string new_topic;
+	if (config.lookupValue("topic", new_topic)) {
+		TOPIC = new_topic;
+	}
+	
+	mqtt::async_client client(address, clientID);
+	if (setup_mqtt(client) > 0) {
+		cerr << "Failed to connect to server. Exiting." << endl;
+		exit(1);
+	}
 	signal(SIGINT, sigIntHandler);
 	piThreadCreate(decoderThread);
 
@@ -253,12 +256,19 @@ int main() {
 		if (hasOut) { 
 			hasOut = 0;
 			piUnlock(1);
-			publishData(out);
+			publishData(client, out);
 		}
 		piUnlock(1);
 		delay(100);
 	}
 
 	cout << "Clean up and exit." << endl;
+	
+	// Disconnect from server
+	cout << "\nDisconnecting from MQTT broker ... ";
+	conntok = client.disconnect();
+	conntok->wait();
+	cout << "OK" << endl;
+
 	digitalWrite(3, 0); // disable rx
 }       
