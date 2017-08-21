@@ -1,0 +1,17 @@
+[Unit]
+Description=RX868 Weather Sensor MQTT Client/Daemon
+Documentation=https://github.com/janwh/rx868-mqtt-daemon
+After=mosquitto.service
+
+[Service]
+Type=notify
+User=daemon
+Group=daemon
+WorkingDirectory=/opt/rx868-mqtt-daemon/
+ExecStart=/opt/rx868-mqtt-daemon/rxdec
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+
