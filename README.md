@@ -1,8 +1,8 @@
-# TempHygroRX868
+# RX868 or ELV WS 300 PC-II weather data MQTT client/daemon
 
-Receiver for data of wireless weather sensors with RX868 and Raspberry Pi.
+This simple binary will run as a daemon on a Raspberry Pi (or any device supported by the WiringPi library), collect data from a connected RX868-based 868 MHz receiver, and relay the received data to an MQTT broker. 
 
-The software controls the ELV RX868 rf 868.35 MHz receiver module to read and decode data of wireless weather sensores.
+The software controls the ELV RX868 rf 868.35 MHz receiver module to read and decode data of wireless weather sensors. The same module can be de-soldered from a ELV WS 300 PC-ii weather station, which is how I came by it.
 
 The communication protocol is compatible to ELV sensors like the S 300 and ASH 2200 and self-made sensors based on the [TempHygroTX868 arduino library][TempHygroTX868].
 
@@ -11,10 +11,34 @@ The communication protocol is compatible to ELV sensors like the S 300 and ASH 2
 * Raspberry Pi
 * [RX868 receiver][RX868]
 * [WiringPi library][WiringPi]
+* Libconfig
+* Paho MQTT C++ library
+
+## Compiling
+
+T.B.D.
+
+Requires presence of self-compiled PAHO MQTT library, and libconfig.
+
+
+# Daemonizing / Running as a systemd service
+
+You probably want to execute the program continuously in the background. This can be done by using the service template:
+
+```
+sudo cp /opt/rx868-mqtt-daemon/template.service /etc/systemd/system/rx868.service
+
+sudo systemctl daemon-reload
+
+sudo systemctl start rx868.service
+sudo systemctl status rx868.service
+
+sudo systemctl enable rx868.service
+```
 
 ## License
 
-Copyright 2015 Martin Kompf
+Copyright 2015 Martin Kompf, 2017 Jan Willhaus
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
