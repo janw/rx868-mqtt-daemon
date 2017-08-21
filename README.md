@@ -42,9 +42,10 @@ make
 sudo make install
 ```
 
-Now just clone this repo (best into `/opt`), and run `make` inside it.
+Now just clone this repo (best into `/opt`), and run `make` inside it. You might have to create `/opt` or adjust its or your user's permissions to get access to it.
 
 ```
+cd /opt
 git clone https://github.com/janwh/rx868-mqtt-daemo/rx868-mqtt-daemonn.git
 cd rx868-mqtt-daemon 
 make
@@ -56,8 +57,11 @@ Run the daemon by its name:
 ./rxdec
 ```
 
+## Configuration
 
-# Daemonizing / Running as a systemd service
+The deamon gets its setup from the `config.cfg` file in the repo. Make sure to adjust all settings to match your MQTT broker. If the broker requires authentication, uncomment the `username` and `password` lines, and enter the credentials. Empty credentials will be tried as such, so if no authentication is required, comment the lines properly.
+
+## Daemonizing / Running as a systemd service
 
 You probably want to execute the program continuously in the background. This can be done by using the service template:
 
