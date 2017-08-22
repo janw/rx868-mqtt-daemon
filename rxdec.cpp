@@ -89,7 +89,9 @@ int setup_mqtt(mqtt::async_client &client)
 
 void create_and_send(mqtt::async_client &client, int address, string type, float value)
 {
-	string val_str = to_string(value);
+	char buff[16];
+	sprintf(buff, "%.1f", value);
+	string val_str = buff;
 	string add_str = to_string(address);
 	cout << "\nsending message..." << endl;
 	mqtt::message_ptr pubmsg = mqtt::make_message(
